@@ -1,0 +1,15 @@
+idea/
+data/videos_160
+*.pkl
+*.tar
+*.mp4
+models_512
+models_back_and_front
+__pycache__/
+.vscode/
+custom_data
+extracted_frames
+memo.py
+custom_label
+total_videos
+demo
