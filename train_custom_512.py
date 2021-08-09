@@ -1,26 +1,25 @@
 import os
+import time
 
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from tqdm import tqdm
 
 import util
 from dataloader import CustomGolfDB, Normalize, ToTensor
-from eval_custom import eval
 from model import EventDetector
 
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 # os.environ["CUDA_VISIBLE_DEVICES"]= "0"  # Set the GPU 1 to use
 
 if __name__ == '__main__':
-    pretrained = True
+    start_time = time.time()
 
     # training configuration
     iterations = 20000
     it_save = 250  # save model every 100 iterations
-    seq_length = 32
-    bs = 8  # batch size
+    seq_length = 64
+    bs = 4  # batch size
     k = 10  # frozen layers
 
     model = EventDetector(pretrain=True,
@@ -29,9 +28,9 @@ if __name__ == '__main__':
                           lstm_hidden=256,
                           bidirectional=True,
                           dropout=False)
-    util.freeze_layers(k, model)
+    util.freeze_layers(k, model)  # 레이어 프리징
     model.cuda()
-    model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     dataset = CustomGolfDB(
         video_path='total_videos/',
@@ -59,10 +58,12 @@ if __name__ == '__main__':
 
     losses = util.AverageMeter()
 
+    pretrained = True
     if pretrained:  # 사전에 학습되어 있는 경우
         device = torch.device('cuda')
-        checkpoint = torch.load('models_512/swingnet_5000.pth.tar', map_location=device)
+        checkpoint = torch.load('models_512/swingnet_16250.pth.tar', map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
+        model = torch.nn.DataParallel(model, device_ids=[0, 1])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     save_folder = 'models_512'
@@ -70,10 +71,10 @@ if __name__ == '__main__':
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
 
-    i = 5000
+    i = 16250
     while i < iterations:
         model.train()
-        for sample in tqdm(data_loader):
+        for sample in data_loader:
             images, labels = sample['images'].cuda(), sample['labels'].cuda()
             logits = model(images)
             labels = labels.view(bs * seq_length)
@@ -84,6 +85,7 @@ if __name__ == '__main__':
             optimizer.step()
             print('Iteration: {}\tLoss: {loss.val:.4f} ({loss.avg:.4f})'.format(
                 i, loss=losses))
+            print('time : {}min'.format((time.time() - start_time) // 60))
             i += 1
             if i % it_save == 0:
                 if isinstance(model, torch.nn.DataParallel):

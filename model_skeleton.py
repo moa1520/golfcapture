@@ -1,14 +1,10 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from torch.utils.data.dataloader import DataLoader
-from torchvision.transforms import transforms
 
 from MobileNetV2 import MobileNetV2
-from VC.models.RefineNet import RefineNet
 from VC.models.ScalePoseNet import ScalePoseNet
 from VC.options import BaseOptions
-from dataloader import CustomGolfDB, Normalize, ToTensor
 
 
 class fusion(nn.Module):
@@ -35,17 +31,9 @@ class EventDetector(nn.Module):
         self.bidirectional = bidirectional
         self.dropout = dropout
 
-        opt = BaseOptions().parse()
-
-        net = MobileNetV2(width_mult=width_mult)  # MobileNetV2
-        self.scale_posenet = ScalePoseNet(opt)  # ScalePoseNet
-        self.rf_model = RefineNet(opt)  # RefineNet
-
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        state_dict_posenet = torch.load(
-            'VC/models/ScalePoseNet_latest', map_location=device)
-        self.scale_posenet.load_state_dict(state_dict_posenet)
+        net = MobileNetV2(width_mult=width_mult)  # MobileNetV2
 
         # state_dict_ref = torch.load(
         #     'VC/models/RefineNet_latest', map_location=device)
@@ -56,11 +44,8 @@ class EventDetector(nn.Module):
         if pretrain:
             net.load_state_dict(state_dict_mobilenet)
 
-        self.scale_posenet.eval()
-        # self.rf_model.eval()
-
         self.fusion = nn.Sequential(
-            nn.Linear(1664, 512),
+            nn.Linear(1301, 512),
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
@@ -99,33 +84,25 @@ class EventDetector(nn.Module):
                 return (Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True),
                         Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True))
 
-    def forward(self, x, lengths=None):
+    def forward(self, x, heatmaps):
         batch_size, timesteps, C, H, W = x.size()
+        c_in = x.view(batch_size * timesteps, C, H, W)
         self.hidden = self.init_hidden(batch_size)
 
-        # PoseNet forward -> out shape: (batch * timesteps, 384)
-        p_in = x.view(batch_size * timesteps, C, H, W)
-        for i in range(batch_size * timesteps):
-            heatmaps = self.scale_posenet(p_in[i, :].unsqueeze(0))
-            if i == 0:
-                p_outs = heatmaps.mean(3).mean(2)
-            else:
-                p_outs = torch.cat([p_outs, heatmaps.mean(3).mean(2)], dim=0)
-
         # CNN forward -> out shape: (batch * timesteps, 1280)
-        c_out = self.cnn(p_in)
-        c_out = c_out.mean(3).mean(2)
+        c_out = self.cnn(c_in)
+        c_out = c_out.mean(3).mean(2) # (batch * timestep, 1280)
         if self.dropout:
             c_out = self.drop(c_out)
 
         # Fusion
-        f_in = torch.cat([c_out, p_outs], dim=1)
-        f_in = f_in.view(batch_size, timesteps, -1)  # (batch, timesteps, 1664)
-        f_out = self.fusion(f_in)  # (batch, timesteps, 1664)
+        f_in = torch.cat([c_out, heatmaps], dim=1)
+        f_in = f_in.view(batch_size, timesteps, -1)  # (batch, timesteps, 1301)
+        f_out = self.fusion(f_in)  # (batch, timesteps, 1301)
 
         # LSTM forward
-        # r_in = c_out.view(batch_size, timesteps, -1)
-        r_out, states = self.rnn(f_out, self.hidden)
+        r_in = f_out.view(batch_size, timesteps, -1)
+        r_out, states = self.rnn(r_in, self.hidden)
         out = self.lin(r_out)
         out = out.view(batch_size * timesteps, 9)
 
@@ -140,22 +117,20 @@ if __name__ == '__main__':
                           bidirectional=True,
                           dropout=False)
     model.cuda()
-    dataset = CustomGolfDB(
-        video_path='total_videos/',
-        label_path='custom_label/train_label.json',
-        seq_length=16,
-        transform=transforms.Compose([ToTensor(), Normalize(
-            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
-        train=True,
-        input_size=512
-    )
-    data_loader = DataLoader(dataset,
-                             batch_size=1,
-                             shuffle=True,
-                             drop_last=True)
-    dataiter = iter(data_loader)
-    sample = next(dataiter)
-    images, labels = sample['images'].cuda(), sample['labels'].cuda()
 
-    output = model(images)
+    images = torch.zeros(5, 2, 3, 512, 512).cuda()
+    batch_size, timesteps, C, H, W = images.size()
+    opt = BaseOptions().parse()
+    scale_posenet = ScalePoseNet(opt)
+    scale_posenet.cuda()
+
+    p_in = images.view(batch_size * timesteps, C, H, W)
+    for k in range(batch_size * timesteps):
+        heatmaps = scale_posenet(p_in[k, :].unsqueeze(0))
+        if k == 0:
+            p_outs = heatmaps.mean(3).mean(2)
+        else:
+            p_outs = torch.cat([p_outs, heatmaps.mean(3).mean(2)], dim=0)
+
+    output = model(images, p_outs)
     print(output.shape)

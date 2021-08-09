@@ -11,6 +11,10 @@ from torchvision import transforms
 
 from eval import ToTensor, Normalize
 from model import EventDetector
+from model_2plus1_revised import r2plus1d_18
+
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Set the GPU 1 to use
 
 event_names = {
     0: 'Address',
@@ -26,7 +30,7 @@ event_names = {
 
 
 class SampleVideo(Dataset):
-    def __init__(self, path, input_size=512, transform=None):
+    def __init__(self, path, input_size, transform=None):
         self.path = path
         self.input_size = input_size
         self.transform = transform
@@ -69,31 +73,23 @@ if __name__ == '__main__':
     parser.add_argument(
         '-p', '--path',
         help='Path to video that you want to test',
-        default='total_videos/bad_side_swing1181.mp4')
-    parser.add_argument('-s', '--seq-length', type=int,
-                        help='Number of frames to use per forward pass', default=16)
+        default='total_videos/bad_front_swing1129.mp4')
     args = parser.parse_args()
-    seq_length = args.seq_length
+    seq_length = 64
 
     print('Preparing video: {}'.format(args.path))
 
     ds = SampleVideo(args.path, transform=transforms.Compose([ToTensor(),
                                                               Normalize([0.485, 0.456, 0.406],
-                                                                        [0.229, 0.224, 0.225])]))
+                                                                        [0.229, 0.224, 0.225])]), input_size=512)
 
     dl = DataLoader(ds, batch_size=1, shuffle=False, drop_last=False)
 
-    model = EventDetector(pretrain=True,
-                          width_mult=1.,
-                          lstm_layers=1,
-                          lstm_hidden=256,
-                          bidirectional=True,
-                          dropout=False)
+    model = r2plus1d_18(num_classes=9, seq_length=seq_length)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    save_dict = torch.load('models_512/swingnet_5000.pth.tar', map_location=device)
+    save_dict = torch.load('model_2Plus1/swingnet_200.pth.tar', map_location=device)
 
     print('Using device:', device)
-    model = torch.nn.DataParallel(model, device_ids=[0, 1])
     model.load_state_dict(save_dict['model_state_dict'])
     model.to(device)
     model.eval()

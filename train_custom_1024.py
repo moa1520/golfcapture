@@ -9,15 +9,15 @@ import util
 from dataloader import CustomGolfDB, Normalize, ToTensor
 from model import EventDetector
 
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Set the GPU 1 to use
-
 if __name__ == '__main__':
+    start_time = time.time()
+    pretrained = False
+
     # training configuration
     iterations = 10000
-    it_save = 100  # save model every 100 iterations
-    seq_length = 100
-    bs = 22  # batch size
+    it_save = 250  # save model every 100 iterations
+    seq_length = 8
+    bs = 8  # batch size
     k = 10  # frozen layers
 
     model = EventDetector(pretrain=True,
@@ -27,8 +27,8 @@ if __name__ == '__main__':
                           bidirectional=True,
                           dropout=False)
     util.freeze_layers(k, model)
-    model.train()
     model.cuda()
+    model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     dataset = CustomGolfDB(
         video_path='total_videos/',
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         transform=transforms.Compose([ToTensor(), Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
         train=True,
-        input_size=160
+        input_size=1024
     )
     data_loader = DataLoader(dataset,
                              batch_size=bs,
@@ -56,21 +56,20 @@ if __name__ == '__main__':
 
     losses = util.AverageMeter()
 
-    pretrained = True
-    if pretrained:
-        state_dict = torch.load('models_160/swingnet_2000.pth.tar', map_location=torch.device('cuda'))
-        model.load_state_dict(state_dict['model_state_dict'])
-        optimizer.load_state_dict(state_dict['optimizer_state_dict'])
-    model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    if pretrained:  # 사전에 학습되어 있는 경우
+        device = torch.device('cuda')
+        checkpoint = torch.load('models_512/swingnet_5000.pth.tar', map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-    save_folder = 'models_160'
+    save_folder = 'models_1024'
 
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
 
-    i = 2000
-    start_time = time.time()
+    i = 0
     while i < iterations:
+        model.train()
         for sample in data_loader:
             images, labels = sample['images'].cuda(), sample['labels'].cuda()
             logits = model(images)
@@ -94,3 +93,8 @@ if __name__ == '__main__':
                                 'model_state_dict': model.state_dict()}, save_folder + '/swingnet_{}.pth.tar'.format(i))
             if i == iterations:
                 break
+
+        # Validation
+        # model.eval()
+        # PCE = eval(model, seq_length=16, disp=True)
+        # print('Average PCE: {}'.format(PCE))

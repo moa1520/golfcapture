@@ -1,10 +1,17 @@
-import numpy as np
+import pytorch_model_summary
+import torch
+
+from model_2plus1_revised import r2plus1d_18
 
 
 def main():
-    a = [0.61461794, 0.71428571, 0.54152824, 0.79069767, 0.9833887, 0.88372093]
-    a = np.array(a)
-    print(a.mean())
+    model = r2plus1d_18(pretrained=False, num_classes=9, seq_length=32)
+    model.cuda()
+    input = torch.zeros(4, 3, 32, 512, 512).cuda()
+    output = model(input)
+
+
+    print(output.shape)
 
 
 if __name__ == '__main__':
