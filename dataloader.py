@@ -10,29 +10,17 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
 
-class TwoPlusOneDB(Dataset):
-    def __init__(self, video_path, label_path, seq_length, transform=None, train=True, input_size=160):
-        self.video_path = video_path
-        self.label_path = label_path
-        self.seq_length = seq_length
-        self.transform = transform
-        self.train = train
+class SampleVideo(Dataset):
+    def __init__(self, path, input_size, transform=None):
+        self.path = path
         self.input_size = input_size
+        self.transform = transform
 
     def __len__(self):
-        with open(self.label_path, 'r') as json_file:
-            label = json.load(json_file)
-        return len(label['video_name'])
+        return 1
 
-    def __getitem__(self, index):
-        with open(self.label_path, 'r') as json_file:
-            label = json.load(json_file)
-        video_name = label['video_name'][index]
-        events = np.asarray(label['events'][index])
-        images, labels = [], []
-        cap = cv2.VideoCapture(
-            osp.join(self.video_path, '{}.mp4'.format(video_name)))
-
+    def __getitem__(self, idx):
+        cap = cv2.VideoCapture(self.path)
         frame_size = [cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
                       cap.get(cv2.CAP_PROP_FRAME_WIDTH)]
         ratio = self.input_size / max(frame_size)
@@ -42,42 +30,19 @@ class TwoPlusOneDB(Dataset):
         top, bottom = delta_h // 2, delta_h - (delta_h // 2)
         left, right = delta_w // 2, delta_w - (delta_w // 2)
 
-        if self.train:
-            start_frame = np.random.randint(events[-1] + 1)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-            pos = start_frame
-            while len(images) < self.seq_length:
-                ret, img = cap.read()
-                if ret:
-                    img = cv2.resize(img, (new_size[1], new_size[0]))
-                    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
-                                             value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
-                    img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    images.append(img)
-                    if pos in events:
-                        labels.append(np.where(events == pos)[0][0])
-                    else:
-                        labels.append(8)
-                    pos += 1
-                else:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    pos = 0
-            cap.release()
-        else:
-            for pos in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
-                _, img = cap.read()
-                img = cv2.resize(img, (new_size[1], new_size[0]))
-                img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
-                                         value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
-                img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                images.append(img)
-                if pos in events:
-                    labels.append(np.where(events == pos)[0][0])
-                else:
-                    labels.append(8)
-            cap.release()
+        # preprocess and return frames
+        images = []
+        for _ in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
+            _, img = cap.read()
+            img = cv2.resize(img, (new_size[1], new_size[0]))
+            img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                                     value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
+            img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            images.append(img)
+        cap.release()
+        # only for compatibility with transforms
+        labels = np.zeros(len(images))
         sample = {'images': np.asarray(images), 'labels': np.asarray(labels)}
         if self.transform:
             sample = self.transform(sample)

@@ -1,17 +1,16 @@
 import pytorch_model_summary
 import torch
 
-from model_2plus1_revised import r2plus1d_18
+from model_resnet import EventDetector
 
 
 def main():
-    model = r2plus1d_18(pretrained=False, num_classes=9, seq_length=32)
+    model = EventDetector(pretrain=False, width_mult=1, lstm_layers=1, lstm_hidden=256, bidirectional=True,
+                          dropout=False)
+
+    input = torch.zeros(4, 8, 3, 512, 512).cuda()
     model.cuda()
-    input = torch.zeros(4, 3, 32, 512, 512).cuda()
-    output = model(input)
-
-
-    print(output.shape)
+    print(pytorch_model_summary.summary(model, input))
 
 
 if __name__ == '__main__':

@@ -12,18 +12,19 @@ from model_2plus1_revised import r2plus1d_18
 
 
 def main():
-    batch_size = 4
-    seq_length = 64
+
+    batch_size = 8
+    seq_length = 32
     input_size = 160
     iterations = 10000
-    it_save = 100
+    it_save = 500
     save_folder = 'models_2Plus1'
 
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
 
     # Model
-    model = r2plus1d_18(progress=True, num_classes=9, seq_length=seq_length)
+    model = r2plus1d_18(progress=True, num_classes=9)
     model.cuda()
 
     # Dataloader
@@ -51,7 +52,7 @@ def main():
 
     pretrained = False
     if pretrained:
-        state_dict = torch.load('model_2Plus1/swingnet_1900.pth.tar')
+        state_dict = torch.load('models_2Plus1/swingnet_4500.pth.tar')
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']

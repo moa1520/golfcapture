@@ -187,7 +187,7 @@ class R2Plus1dStem(nn.Sequential):
 class VideoResNet(nn.Module):
 
     def __init__(self, block, conv_makers, layers,
-                 stem, seq_length, num_classes=400,
+                 stem, num_classes=400,
                  zero_init_residual=False):
         """Generic resnet video generator.
         Args:
@@ -207,16 +207,9 @@ class VideoResNet(nn.Module):
         self.layer2 = self._make_layer(block, conv_makers[1], 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, conv_makers[2], 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, conv_makers[3], 512, layers[3], stride=2)
-        self.layer5 = nn.Sequential(
-            nn.ConvTranspose3d(512, 128, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.BatchNorm3d(128),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose3d(128, seq_length, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.BatchNorm3d(seq_length),
-            nn.ReLU(inplace=True)
-        )
 
-        self.avgpool = nn.AdaptiveAvgPool3d((1, 3, 3))
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
+        self.fc = nn.Linear(512, 288)
 
         # init weights
         self._initialize_weights()
@@ -227,15 +220,16 @@ class VideoResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
 
     def forward(self, x):
+        B, _, N, _, _ = x.size()
         x = self.stem(x)
-
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.layer5(x)
         x = self.avgpool(x)
-        x = x.view(x.size(0) * x.size(1), -1)
+        x = x.flatten(1)
+        x = self.fc(x)
+        x = x.view(B * N, -1)
 
         return x
 

@@ -1,10 +1,11 @@
-from model import EventDetector
+import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
+
 from dataloader import GolfDB, ToTensor, Normalize
-import torch.nn.functional as F
-import numpy as np
+from model import EventDetector
 from util import correct_preds
 
 
@@ -33,7 +34,7 @@ def eval(model, split, seq_length, n_cpu, disp):
                 image_batch = images[:, batch * seq_length:, :, :, :]
             else:
                 image_batch = images[:, batch *
-                                     seq_length:(batch + 1) * seq_length, :, :, :]
+                                        seq_length:(batch + 1) * seq_length, :, :, :]
             logits = model(image_batch.cuda())
             if batch == 0:
                 probs = F.softmax(logits.data, dim=1).cpu().numpy()
@@ -50,7 +51,6 @@ def eval(model, split, seq_length, n_cpu, disp):
 
 
 if __name__ == '__main__':
-
     split = 1
     seq_length = 64
     n_cpu = 6

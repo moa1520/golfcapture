@@ -1,4 +1,83 @@
+import matplotlib.pyplot as plt
 import numpy as np
+import torch.nn.functional as F
+import torchvision.utils as utils
+
+from visualization import visualize_attn_softmax
+
+
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+            # The normalize code -> t.sub_(m).div_(s)
+        return tensor
+
+
+def show_attention(images, c1, c2, c3):
+    I_test = utils.make_grid(images, nrow=6, normalize=True, scale_each=True)
+    attn1 = visualize_attn_softmax(I_test, c1, up_factor=16, nrow=6)
+    attn2 = visualize_attn_softmax(I_test, c2, up_factor=64, nrow=6)
+    attn3 = visualize_attn_softmax(I_test, c3, up_factor=256, nrow=6)
+    attn1 = attn1.permute((1, 2, 0)).detach().cpu().numpy()
+    attn2 = attn2.permute((1, 2, 0)).detach().cpu().numpy()
+    attn3 = attn3.permute((1, 2, 0)).detach().cpu().numpy()
+    plt.imshow(attn1)
+    plt.show()
+    plt.imshow(attn2)
+    plt.show()
+    plt.imshow(attn3)
+    plt.show()
+
+
+def get_probs(dl, seq_length, model):
+    for sample in dl:
+        images = sample['images']
+        batch = 0
+        while batch * seq_length < images.shape[1]:
+            if (batch + 1) * seq_length > images.shape[1]:
+                image_batch = images[:, batch * seq_length:, :, :, :]
+            else:
+                image_batch = images[:, batch *
+                                        seq_length:(batch + 1) * seq_length, :, :, :]
+
+            logits, c1, c2, c3 = model(image_batch.cuda())
+
+            # I_test = image_batch[0, :, :, :, :]
+            # I_test = utils.make_grid(I_test, nrow=6, normalize=True, scale_each=True)
+            # attn1 = visualize_attn_softmax(I_test, c1, up_factor=16, nrow=6)
+            # attn2 = visualize_attn_softmax(I_test, c2, up_factor=64, nrow=6)
+            # attn3 = visualize_attn_softmax(I_test, c3, up_factor=256, nrow=6)
+            # attn1 = attn1.permute((1, 2, 0)).detach().cpu().numpy()
+            # attn2 = attn2.permute((1, 2, 0)).detach().cpu().numpy()
+            # attn3 = attn3.permute((1, 2, 0)).detach().cpu().numpy()
+            # plt.imshow(attn1)
+            # plt.show()
+            # plt.imshow(attn2)
+            # plt.show()
+            # plt.imshow(attn3)
+            # plt.show()
+
+            # logits -> (64, 9)
+
+            if batch == 0:
+                probs = F.softmax(logits.data, dim=0).cpu().numpy()
+            else:
+                probs = np.append(probs, F.softmax(
+                    logits.data, dim=1).cpu().numpy(), 0)
+            batch += 1
+
+    return probs
 
 
 class AverageMeter(object):
