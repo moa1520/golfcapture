@@ -9,7 +9,7 @@ from torchvision import transforms
 
 from dataloader import SampleVideo
 from eval import ToTensor, Normalize
-from model_resnet import EventDetector
+from models.model_resnet import EventDetector
 from util import get_probs
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0

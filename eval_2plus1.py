@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataloader import ToTensor, Normalize
-from model_2plus1 import r2plus1d_18
+from models.model_2plus1 import r2plus1d_18
 from test_video_custom import SampleVideo
 
 

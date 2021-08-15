@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from dataloader import SampleVideo
 from eval import ToTensor, Normalize
-from model import EventDetector
+from models.model import EventDetector
 from util import get_probs
 
 event_names = {

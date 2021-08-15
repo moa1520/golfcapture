@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 import util
 from dataloader import ToTensor, Normalize, TwoPlusOneDB
-from model_2plus1_revised import r2plus1d_18
+from models.model_2plus1_revised import r2plus1d_18
 
 
 def main():

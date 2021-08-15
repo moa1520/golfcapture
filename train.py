@@ -1,5 +1,5 @@
 from dataloader import GolfDB, Normalize, ToTensor
-from model import EventDetector
+from models.model import EventDetector
 import util
 import torch
 from torch.utils.data import DataLoader

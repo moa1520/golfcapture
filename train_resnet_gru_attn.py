@@ -8,8 +8,7 @@ from torchvision import transforms
 
 import util
 from dataloader import CustomGolfDB, Normalize, ToTensor
-from model_resnet import EventDetector
-from util import UnNormalize, show_attention
+from models.model_resnet_gru_attn import EventDetector
 
 if __name__ == '__main__':
     # training configuration
@@ -19,8 +18,8 @@ if __name__ == '__main__':
     parser.add_argument('--it_save', type=int, help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int, help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int, help='batch size', default=6)
-    parser.add_argument('--frozen_layers', '-k', type=int, help='the number of frozen layers', default=7)
-    parser.add_argument('--save_folder', type=str, help='divided frame numbers', default='models_attn')
+    parser.add_argument('--frozen_layers', '-k', type=int, help='the number of frozen layers', default=10)
+    parser.add_argument('--save_folder', type=str, help='divided frame numbers', default='dict_resnet_gru_attn')
 
     arg = parser.parse_args()
 
@@ -34,7 +33,6 @@ if __name__ == '__main__':
     model.train()
     model.cuda()
 
-    unnorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     dataset = CustomGolfDB(
         video_path='total_videos/',
         label_path='custom_label/train_label.json',
@@ -66,7 +64,7 @@ if __name__ == '__main__':
 
     pretrained = True
     if pretrained:
-        state_dict = torch.load('models_attn/swingnet_10000.pth.tar', map_location=torch.device('cuda'))
+        state_dict = torch.load('dict_resnet_gru_attn/swingnet_5000.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
@@ -77,8 +75,7 @@ if __name__ == '__main__':
     while i < arg.iterations:
         for sample in data_loader:
             images, labels = sample['images'].cuda(), sample['labels'].cuda()
-            logits, c1, c2, c3 = model(images)
-            # show_attention(unnorm(images.view(384, 3, 512, 512)[30:60, :, :, :]), c1[30:60, :, :, :], c2[30:60, :, :, :], c3[30:60, :, :, :])
+            logits = model(images)
             labels = labels.view(arg.batch_size * arg.seq_length)
             loss = criterion(logits, labels)
             optimizer.zero_grad()

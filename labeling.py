@@ -1,18 +1,13 @@
-import argparse
 from extract_frame import saving_frames
 import os
-import glob
 import cv2
 import torch
-from torch.cuda import is_available
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from eval import ToTensor, Normalize
-from model import EventDetector
+from models.model import EventDetector
 import numpy as np
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
-
 
 event_names = {
     0: 'Address',

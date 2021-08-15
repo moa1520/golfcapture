@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataloader import GolfDB, ToTensor, Normalize
-from model import EventDetector
+from models.model import EventDetector
 from util import correct_preds
 
 

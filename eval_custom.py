@@ -1,4 +1,3 @@
-import os
 import time
 
 import numpy as np
@@ -8,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataloader import CustomGolfDB, ToTensor, Normalize
-from model_resnet import EventDetector
+from models.model_resnet import EventDetector
 from util import correct_preds
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
@@ -42,7 +41,7 @@ def eval(model, seq_length, disp, input_size):
             else:
                 image_batch = images[:, batch *
                                         seq_length:(batch + 1) * seq_length, :, :, :]
-            logits, _, _, _ = model(image_batch.cuda())
+            logits = model(image_batch.cuda())
             if batch == 0:
                 probs = F.softmax(logits.data, dim=1).cpu().numpy()
             else:
@@ -64,7 +63,7 @@ if __name__ == '__main__':
     start_time = time.time()
     seq_length = 32
     input_size = 512
-    saved_path = 'models_attn/swingnet_7500.pth.tar'
+    saved_path = 'models_512/swingnet_8000.pth.tar'
 
     model = EventDetector(pretrain=True,
                           width_mult=1.,
