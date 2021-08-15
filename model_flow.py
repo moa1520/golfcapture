@@ -27,5 +27,6 @@ if __name__ == '__main__':
                              drop_last=True)
     dataiter = iter(data_loader)
     image_batch = next(dataiter)
-    print(image_batch.shape)
+    images = image_batch['images']
+
     # get_flows()
