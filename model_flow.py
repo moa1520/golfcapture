@@ -15,7 +15,7 @@ if __name__ == '__main__':
     dataset = CustomGolfDB(
         video_path='total_videos/',
         label_path='custom_label/train_label.json',
-        seq_length=64,
+        seq_length=32,
         transform=transforms.Compose([ToTensor(), Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
         train=True,
@@ -29,4 +29,4 @@ if __name__ == '__main__':
     image_batch = next(dataiter)
     images = image_batch['images']
 
-    # get_flows()
+    get_flows(images)

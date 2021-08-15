@@ -4,7 +4,7 @@ import numpy as np
 
 def get_flows(imgs):
     B, N, C, H, W = imgs.size()
-    imgs = imgs.permute((0, 1, 4, 2, 3)).detach().cpu().numpy()
+    imgs = imgs.permute((0, 1, 3, 4, 2)).detach().cpu().numpy()
     for b in range(1):
         hsv = np.zeros_like(imgs[b, 0, :, :, :])
         hsv[..., 1] = 255
