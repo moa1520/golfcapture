@@ -175,15 +175,14 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.lin = nn.Linear(1536, 512)
+        self.maxpool2 = nn.AdaptiveMaxPool2d((1, 1))
+        self.lin = nn.Linear(1024, 512)
 
         ## 추가
-        self.projector1 = attention.ProjectorBlock(64, 512)
-        self.projector2 = attention.ProjectorBlock(128, 512)
-        self.projector3 = attention.ProjectorBlock(256, 512)
+        self.projector1 = attention.ProjectorBlock(128, 512)
+        self.projector2 = attention.ProjectorBlock(256, 512)
         self.attn1 = attention.AttentionBlock(512, normalize_attn=True)
         self.attn2 = attention.AttentionBlock(512, normalize_attn=True)
-        self.attn3 = attention.AttentionBlock(512, normalize_attn=True)
         ###
 
         for m in self.modules():
@@ -236,18 +235,16 @@ class ResNet(nn.Module):
         x = self.maxpool(x)
 
         x = self.layer1(x)
-        l1 = F.max_pool2d(x, kernel_size=2, stride=2, padding=0)
-        l2 = F.max_pool2d(self.layer2(l1), kernel_size=2, stride=2, padding=0)
-        l3 = F.max_pool2d(self.layer3(l2), kernel_size=2, stride=2, padding=0)
-        x = self.layer4(l3)
-        g = self.avgpool(x)
+        l1 = F.max_pool2d(self.layer2(x), kernel_size=2, stride=2, padding=0)
+        l2 = F.max_pool2d(self.layer3(l1), kernel_size=2, stride=2, padding=0)
+        x = self.layer4(l2)
+        g = self.maxpool2(x)
         c1, g1 = self.attn1(self.projector1(l1), g)
         c2, g2 = self.attn2(self.projector2(l2), g)
-        c3, g3 = self.attn3(self.projector3(l3), g)
-        g = torch.cat((g1, g2, g3), dim=1)
+        g = torch.cat((g1, g2), dim=1)
         g = self.lin(g)
 
-        return g, c1, c2, c3
+        return g, c1, c2
 
     def forward(self, x: Tensor) -> tuple:
         return self._forward_impl(x)

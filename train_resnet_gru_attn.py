@@ -62,9 +62,9 @@ if __name__ == '__main__':
 
     i = 0
 
-    pretrained = True
+    pretrained = False
     if pretrained:
-        state_dict = torch.load('dict_resnet_gru_attn/swingnet_5000.pth.tar', map_location=torch.device('cuda'))
+        state_dict = torch.load('dict_resnet_gru_attn_layer123/swingnet_5000.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']

@@ -39,11 +39,10 @@ class EventDetector(nn.Module):
 
         # CNN forward
         c_in = x.view(batch_size * timesteps, C, H, W)
-        c_out, c1, c2, c3 = self.cnn(c_in)
+        c_out, c1, c2 = self.cnn(c_in)
         '''
-        c1 : 64x64
-        c2 : 16x16
-        c3 : 4x4
+        c1 : 16x16
+        c2 : 4x4
         '''
         if self.dropout:
             c_out = self.drop(c_out)

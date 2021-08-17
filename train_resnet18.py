@@ -13,13 +13,13 @@ from models.model_resnet import EventDetector
 if __name__ == '__main__':
     # training configuration
     parser = argparse.ArgumentParser(description='Training arguments')
-    parser.add_argument('--input_size', type=int, help='image size of input', default=512)
+    parser.add_argument('--input_size', type=int, help='image size of input', default=224)
     parser.add_argument('--iterations', type=int, help='the number of training iterations', default=20000)
     parser.add_argument('--it_save', type=int, help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int, help='divided frame numbers', default=64)
-    parser.add_argument('--batch_size', '-bs', type=int, help='batch size', default=6)
-    parser.add_argument('--frozen_layers', '-k', type=int, help='the number of frozen layers', default=7)
-    parser.add_argument('--save_folder', type=str, help='divided frame numbers', default='models_512')
+    parser.add_argument('--batch_size', '-bs', type=int, help='batch size', default=28)
+    parser.add_argument('--frozen_layers', '-k', type=int, help='the number of frozen layers', default=5)
+    parser.add_argument('--save_folder', type=str, help='divided frame numbers', default='models_224')
 
     arg = parser.parse_args()
 
@@ -62,9 +62,9 @@ if __name__ == '__main__':
 
     i = 0
 
-    pretrained = True
+    pretrained = False
     if pretrained:
-        state_dict = torch.load('models_512/swingnet_8000.pth.tar', map_location=torch.device('cuda'))
+        state_dict = torch.load('models_512/swingnet_8000(best).pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
