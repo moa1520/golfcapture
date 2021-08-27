@@ -9,7 +9,7 @@ from torchvision import transforms
 
 import util
 from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
-from models.model_resnet_heatmap import EventDetector
+from models.model_resnet_heatmap import Plan1, Plan2
 
 if __name__ == '__main__':
     writer = SummaryWriter()
@@ -19,34 +19,37 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', type=int,
                         help='image size of input', default=224)
     parser.add_argument('--iterations', type=int,
-                        help='the number of training iterations', default=20000)
+                        help='the number of training iterations', default=10000)
     parser.add_argument('--it_save', type=int,
-                        help='save model every what iterations', default=100)
+                        help='save model every what iterations', default=250)
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=12)
+                        help='batch size', default=16)
     parser.add_argument('--frozen_layers', '-k', type=int,
-                        help='the number of frozen layers', default=5)
+                        help='the number of frozen layers', default=3)
+    parser.add_argument('--heatmap_size', type=int,
+                        help='the size of heatmap', default=224)
     parser.add_argument('--save_folder', type=str,
-                        help='divided frame numbers', default='models_224')
+                        help='divided frame numbers', default='saved_dicts/224_heatmap_plan2')
 
     arg = parser.parse_args()
 
-    model = EventDetector(pretrain=True,
-                          width_mult=1.,
-                          lstm_layers=1,
-                          lstm_hidden=256,
-                          bidirectional=True,
-                          dropout=False)
+    model = Plan2(pretrain=True,
+                  width_mult=1.,
+                  lstm_layers=1,
+                  lstm_hidden=256,
+                  bidirectional=True,
+                  dropout=False)
     util.freeze_layers(arg.frozen_layers, model)
     model.train()
     model.cuda()
 
     dataset = KeypointDB(
-        video_path='total_videos/',
-        label_path='custom_label/train_label.json',
-        heatmap_path='heatmaps',
+        video_path='data/total_videos',
+        label_path='front_label/train.json',
+        npy_path='keypoint_npys',
+        heatmap_size=arg.heatmap_size,
         seq_length=arg.seq_length,
         transform=transforms.Compose([ToTensorForHeatmap(), NormalizeForHeatmap(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
@@ -76,11 +79,11 @@ if __name__ == '__main__':
     pretrained = False
     if pretrained:
         state_dict = torch.load(
-            'models_224/swingnet_3500.pth.tar', map_location=torch.device('cuda'))
+            'saved_dicts/224_heatmap_plan1/swingnet_2500.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
-    # model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     start_time = time.time()
 
@@ -99,8 +102,8 @@ if __name__ == '__main__':
                 i, loss=losses))
             print('time : {}min'.format((time.time() - start_time) // 60))
 
-            writer.add_scalars('Loss', losses.val, i)
-            writer.add_scalars('Avg Loss', losses.avg, i)
+            writer.add_scalar('Loss', losses.val, i)
+            writer.add_scalar('Avg Loss', losses.avg, i)
 
             i += 1
             if i % arg.it_save == 0:

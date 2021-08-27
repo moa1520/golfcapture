@@ -1,4 +1,3 @@
-from util import UnNormalize
 import matplotlib.pyplot as plt
 import pytorch_model_summary
 import torch
@@ -7,17 +6,31 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
-from models.model_resnet_heatmap import EventDetector
+from models.model_resnet_heatmap import Plan1, Plan2
 from models.resnet import resnet18
+from util import UnNormalize
+import util
+
+
+def test():
+    model = Plan2(pretrain=True, width_mult=1, lstm_layers=1,
+                  lstm_hidden=256, bidirectional=True, dropout=False)
+    util.freeze_layers(3, model)
+
+    input = torch.zeros(6, 64, 3, 224, 224).cuda()
+    heatmap = torch.zeros(6, 64, 224, 224).cuda()
+    model.cuda()
+
+    print(pytorch_model_summary.summary(model, input, heatmap))
 
 
 def main():
-    model = resnet18(pretrained=True)
-    cnn1 = nn.Sequential(*list(model.children())[:4])
-    cnn2 = nn.Sequential(*list(model.children())[4:-1])
+    # model = resnet18(pretrained=True)
+    # cnn = nn.Sequential(*list(model.children())[:-1])
     ds = KeypointDB(video_path='data/total_videos',
                     label_path='front_label/train.json',
-                    npy_path='/home/tk/Desktop/ktk/keypoint_npys',
+                    npy_path='keypoint_npys',
+                    heatmap_size=224,
                     seq_length=64,
                     transform=transforms.Compose([ToTensorForHeatmap(), NormalizeForHeatmap(
                         [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
@@ -32,19 +45,26 @@ def main():
 
     B, N, C, H, W = img.size()
     img = img.view(B * N, C, H, W)
-    heatmap = heatmap.view(B*N, 1, 56, 56)
+    heatmap = heatmap.view(B*N, 224, 224)
+    img = unnorm(img)
 
-    out1 = cnn1(img)
-    plt.subplot(1, 2, 1)
-    plt.imshow(out1[0].sum(dim=0).detach().numpy(), cmap='jet')
+    plt.subplot(1, 4, 1)
+    plt.imshow(img[0].permute((1, 2, 0)).detach().numpy())
 
-    summed = out1 + heatmap
+    plt.subplot(1, 4, 2)
+    plt.imshow(heatmap[0].detach().numpy(), cmap='jet')
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(summed[0].sum(dim=0).detach().numpy(), cmap='jet')
+    heatmap = torch.unsqueeze(heatmap, dim=1)
+    summed = img + heatmap
+    concatencated = torch.cat((img, heatmap), dim=1)
+    print(concatencated.shape)
+    plt.subplot(1, 4, 3)
+    plt.imshow(summed[0].sum(dim=0).detach().numpy())
+
+    plt.subplot(1, 4, 4)
+    plt.imshow(concatencated[0].sum(dim=0).detach().numpy())
     plt.show()
 
-    # img = unnorm(img)
     # img = img[0][0].permute((1, 2, 0)).detach().numpy()
     # plt.subplot(1, 2, 1)
     # plt.imshow(img)
@@ -68,4 +88,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test()

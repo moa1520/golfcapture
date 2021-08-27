@@ -14,10 +14,11 @@ from VC.utils.func import generate_heatmaps
 
 
 class KeypointDB(Dataset):
-    def __init__(self, video_path, label_path, npy_path, seq_length, transform=None, train=True, input_size=160):
+    def __init__(self, video_path, label_path, npy_path, heatmap_size, seq_length, transform=None, train=True, input_size=160):
         self.video_path = video_path
         self.label_path = label_path
         self.npy_path = npy_path
+        self.heatmap_size = heatmap_size
         self.seq_length = seq_length
         self.transform = transform
         self.train = train
@@ -86,12 +87,12 @@ class KeypointDB(Dataset):
             npy_list = sorted(os.listdir(npy_path))
             cap.release()
 
-        before_heatmaps = [np.load(osp.join(npy_path, npy))[0] * 56
+        before_heatmaps = [np.load(osp.join(npy_path, npy))[0] * self.heatmap_size
                            for npy in npy_list]  # seq_length x 21 x 2
         heatmaps = []
         for before in before_heatmaps:
             heatmaps.append(generate_heatmaps(
-                before, 56, sigma=3))  # seq_length x 21 x 224 x 224
+                before, self.heatmap_size, sigma=3))  # seq_length x 21 x 224 x 224
 
         heatmaps = np.asarray(heatmaps).sum(axis=1)  # seq_length x 224 x 224
 

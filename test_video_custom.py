@@ -7,8 +7,8 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from dataloader import SampleVideo, ToTensor, Normalize
-from models.model_resnet import EventDetector
+from dataloader import SampleVideo, ToTensorForHeatmap, NormalizeForHeatmap
+from models.model_resnet_heatmap import Plan1
 from util import get_probs
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
@@ -34,14 +34,14 @@ if __name__ == '__main__':
 
     print('Preparing video: {}'.format(path))
 
-    ds = SampleVideo(path, transform=transforms.Compose([ToTensor(),
-                                                         Normalize([0.485, 0.456, 0.406],
-                                                                   [0.229, 0.224, 0.225])]), input_size=input_size)
+    ds = SampleVideo(path, transform=transforms.Compose([ToTensorForHeatmap(),
+                                                         NormalizeForHeatmap([0.485, 0.456, 0.406],
+                                                                             [0.229, 0.224, 0.225])]), input_size=input_size)
 
     dl = DataLoader(ds, batch_size=1, shuffle=False, drop_last=False)
 
-    model = EventDetector(pretrain=True, width_mult=1, lstm_layers=1, lstm_hidden=256, bidirectional=True,
-                          dropout=False)
+    model = Plan1(pretrain=True, width_mult=1, lstm_layers=1, lstm_hidden=256, bidirectional=True,
+                  dropout=False)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     save_dict = torch.load(save_dict_path, map_location=device)
 
@@ -84,7 +84,8 @@ if __name__ == '__main__':
         _, img = cap.read()
         cv2.putText(img, '{:.3f}'.format(
             confidence[i]), (20, 20), cv2.FONT_HERSHEY_DUPLEX, 0.75, (0, 0, 255))
-        cv2.imwrite(os.path.join(save_path, '{}_'.format(i) + event_names[i] + '.png'), img)
+        cv2.imwrite(os.path.join(save_path, '{}_'.format(
+            i) + event_names[i] + '.png'), img)
         # cv2.imshow(event_names[i], img)
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
