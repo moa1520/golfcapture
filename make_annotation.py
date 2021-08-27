@@ -36,9 +36,9 @@ def main():
         labels['width'].append(width)
         labels['height'].append(height)
 
-    if not os.path.isdir('front_label'):
-        os.makedirs('front_label')
-    with open('front_label/test.json', 'w') as outfile:
+    if not os.path.isdir('front_labels'):
+        os.makedirs('front_labels')
+    with open('front_labels/test.json', 'w') as outfile:
         json.dump(labels, outfile)
 
 

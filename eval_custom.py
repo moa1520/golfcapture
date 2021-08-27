@@ -18,7 +18,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Set the GPU 1 to use
 
 def eval(model, seq_length, disp, input_size):
     dataset = KeypointDB(video_path='data/total_videos',
-                         label_path='front_label/test.json',
+                         label_path='front_labels/test.json',
                          npy_path='keypoint_npys',
                          seq_length=seq_length,
                          transform=transforms.Compose(

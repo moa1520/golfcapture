@@ -28,7 +28,7 @@ def main():
     # model = resnet18(pretrained=True)
     # cnn = nn.Sequential(*list(model.children())[:-1])
     ds = KeypointDB(video_path='data/total_videos',
-                    label_path='front_label/train.json',
+                    label_path='front_labels/train.json',
                     npy_path='keypoint_npys',
                     heatmap_size=224,
                     seq_length=64,

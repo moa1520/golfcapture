@@ -15,7 +15,7 @@ def main():
     model = r2plus1d_18(progress=True, num_classes=8)
     # dataset = TwoPlusOneDB(
     #     video_path='total_videos/',
-    #     label_path='custom_label/train_label.json',
+    #     label_path='fs_labels/train_label.json',
     #     seq_length=seq_length,
     #     transform=transforms.Compose([ToTensor(), Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
     #     train=False,

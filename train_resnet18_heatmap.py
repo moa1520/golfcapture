@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     dataset = KeypointDB(
         video_path='data/total_videos',
-        label_path='front_label/train.json',
+        label_path='front_labels/train.json',
         npy_path='keypoint_npys',
         heatmap_size=arg.heatmap_size,
         seq_length=arg.seq_length,
@@ -76,10 +76,10 @@ if __name__ == '__main__':
 
     i = 0
 
-    pretrained = False
+    pretrained = True
     if pretrained:
         state_dict = torch.load(
-            'saved_dicts/224_heatmap_plan1/swingnet_2500.pth.tar', map_location=torch.device('cuda'))
+            'saved_dicts/224_heatmap_plan2/swingnet_250.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']

@@ -10,12 +10,12 @@ __pycache__/
 custom_data
 extracted_frames
 memo.py
-custom_label
+fs_labels/
 total_videos
 demo
 RAFT/
 saved_dicts/
 data/
-front_label/
+front_labels/
 keypoint_npys/
 runs/
