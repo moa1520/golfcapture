@@ -14,3 +14,7 @@ custom_label
 total_videos
 demo
 RAFT/
+saved_dicts/
+data/
+front_label/
+keypoint_npys/

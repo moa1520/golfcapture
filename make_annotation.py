@@ -13,7 +13,7 @@ def main():
         'height': [],
         'events': []
     }
-    root = 'D:/tk_unlabeled_videos/custom_training_videos/total_images'
+    root = '/media/tk/SSD_250G/8_frames/test_front'
     dirs = glob(root + '/*')
     for dir in dirs:
         print(dir)
@@ -36,9 +36,9 @@ def main():
         labels['width'].append(width)
         labels['height'].append(height)
 
-    if not os.path.isdir('custom_label'):
-        os.makedirs('custom_label')
-    with open('custom_label/total_label.json', 'w') as outfile:
+    if not os.path.isdir('front_label'):
+        os.makedirs('front_label')
+    with open('front_label/test.json', 'w') as outfile:
         json.dump(labels, outfile)
 
 

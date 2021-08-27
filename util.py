@@ -51,7 +51,7 @@ def get_probs(dl, seq_length, model):
                 image_batch = images[:, batch *
                                         seq_length:(batch + 1) * seq_length, :, :, :]
 
-            logits, c1, c2, c3 = model(image_batch.cuda())
+            logits = model(image_batch.cuda())
 
             # I_test = image_batch[0, :, :, :, :]
             # I_test = utils.make_grid(I_test, nrow=6, normalize=True, scale_each=True)

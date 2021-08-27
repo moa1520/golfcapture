@@ -4,7 +4,7 @@ import os
 import numpy as np
 import torch
 from scipy.stats import multivariate_normal
-from configs.constants import *
+from ..configs.constants import *
 
 
 def adjust_learning_rate(optimizer, epoch, lr, schedule, gamma):

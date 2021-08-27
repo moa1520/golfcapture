@@ -3,14 +3,17 @@ import os
 import time
 
 import torch
+from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 import util
-from dataloader import CustomGolfDB, Normalize, ToTensor
-from models.model_resnet import EventDetector
+from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
+from models.model_resnet_heatmap import EventDetector
 
 if __name__ == '__main__':
+    writer = SummaryWriter()
+
     # training configuration
     parser = argparse.ArgumentParser(description='Training arguments')
     parser.add_argument('--input_size', type=int,
@@ -22,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=28)
+                        help='batch size', default=12)
     parser.add_argument('--frozen_layers', '-k', type=int,
                         help='the number of frozen layers', default=5)
     parser.add_argument('--save_folder', type=str,
@@ -40,11 +43,12 @@ if __name__ == '__main__':
     model.train()
     model.cuda()
 
-    dataset = CustomGolfDB(
+    dataset = KeypointDB(
         video_path='total_videos/',
         label_path='custom_label/train_label.json',
+        heatmap_path='heatmaps',
         seq_length=arg.seq_length,
-        transform=transforms.Compose([ToTensor(), Normalize(
+        transform=transforms.Compose([ToTensorForHeatmap(), NormalizeForHeatmap(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
         train=True,
         input_size=arg.input_size
@@ -69,21 +73,22 @@ if __name__ == '__main__':
 
     i = 0
 
-    pretrained = True
+    pretrained = False
     if pretrained:
         state_dict = torch.load(
             'models_224/swingnet_3500.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
-    model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     start_time = time.time()
 
     while i < arg.iterations:
         for sample in data_loader:
-            images, labels = sample['images'].cuda(), sample['labels'].cuda()
-            logits = model(images)
+            images, labels, heatmaps = sample['images'].cuda(
+            ), sample['labels'].cuda(), sample['heatmaps'].cuda()
+            logits = model(images, heatmaps)
             labels = labels.view(arg.batch_size * arg.seq_length)
             loss = criterion(logits, labels)
             optimizer.zero_grad()
@@ -93,6 +98,10 @@ if __name__ == '__main__':
             print('Iteration: {}\tLoss: {loss.val:.4f} ({loss.avg:.4f})'.format(
                 i, loss=losses))
             print('time : {}min'.format((time.time() - start_time) // 60))
+
+            writer.add_scalars('Loss', losses.val, i)
+            writer.add_scalars('Avg Loss', losses.avg, i)
+
             i += 1
             if i % arg.it_save == 0:
                 if isinstance(model, torch.nn.DataParallel):
@@ -106,3 +115,5 @@ if __name__ == '__main__':
                                 'iterations': i}, arg.save_folder + '/swingnet_{}.pth.tar'.format(i))
             if i == arg.iterations:
                 break
+
+    writer.close()

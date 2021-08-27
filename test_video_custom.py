@@ -7,8 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from dataloader import SampleVideo
-from eval import ToTensor, Normalize
+from dataloader import SampleVideo, ToTensor, Normalize
 from models.model_resnet import EventDetector
 from util import get_probs
 
@@ -28,10 +27,10 @@ event_names = {
 }
 
 if __name__ == '__main__':
-    path = 'total_videos/bad_front_swing1243.mp4'
-    save_dict_path = 'models_attn/swingnet_10000.pth.tar'
-    seq_length = 32
-    input_size = 512
+    path = 'total_videos/bad_front_swing1235.mp4'
+    save_dict_path = 'saved_dicts/models_224/swingnet_1500.pth.tar'
+    seq_length = 64
+    input_size = 224
 
     print('Preparing video: {}'.format(path))
 
@@ -55,8 +54,6 @@ if __name__ == '__main__':
     print('Testing...')
 
     probs = get_probs(dl, seq_length, model)
-
-    # probs -> (264, 9) / test_video.mp4 기준
 
     events = np.argmax(probs, axis=0)[:-1]
 

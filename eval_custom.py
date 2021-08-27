@@ -8,11 +8,11 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dataloader import CustomGolfDB, ToTensor, Normalize
-from models.model_resnet_gru_attn import EventDetector
+from models.model_resnet import EventDetector
 from util import correct_preds
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Set the GPU 1 to use
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # Arrange GPU devices starting from 0
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # Set the GPU 1 to use
 
 
 def eval(model, seq_length, disp, input_size):
@@ -62,9 +62,9 @@ def eval(model, seq_length, disp, input_size):
 
 if __name__ == '__main__':
     start_time = time.time()
-    seq_length = 32
-    input_size = 512
-    saved_path = 'dict_resnet_gru_attn_layer123/swingnet_11000.pth.tar'
+    seq_length = 64
+    input_size = 224
+    saved_path = 'saved_dicts/models_224/swingnet_7000.pth.tar'
 
     model = EventDetector(pretrain=True,
                           width_mult=1.,

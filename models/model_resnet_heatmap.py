@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from models.resnet import resnet18
@@ -26,7 +27,7 @@ class EventDetector(nn.Module):
         if self.dropout:
             self.drop = nn.Dropout(0.5)
 
-    def forward(self, x):
+    def forward(self, x, heatmaps):
         batch_size, timesteps, C, H, W = x.size()
         # self.hidden = self.init_hidden(batch_size)
 

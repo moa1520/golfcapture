@@ -1,77 +1,71 @@
-import argparse
-
+from util import UnNormalize
 import matplotlib.pyplot as plt
-import numpy as np
-import torch.nn
+import pytorch_model_summary
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from RAFT.core.raft import RAFT
-from RAFT.core.utils import flow_viz
-from RAFT.core.utils.utils import InputPadder
-from dataloader import CustomGolfDB, ToTensor, Normalize
-
-
-def viz(img, flo):
-    img = img[0].permute(1, 2, 0).detach().cpu().numpy()
-    flo = flo[0].permute(1, 2, 0).detach().cpu().numpy()
-
-    # map flow to rgb image
-    flo = flow_viz.flow_to_image(flo)
-    img_flo = np.concatenate([img, flo], axis=0)
-
-    plt.imshow(img_flo / 255.0)
-    plt.show()
-
-    # cv2.imshow('image', img_flo[:, :, [2,1,0]]/255.0)
-    # cv2.waitKey()
+from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
+from models.model_resnet_heatmap import EventDetector
+from models.resnet import resnet18
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help="restore checkpoint", default='models/raft-things.pth')
-    parser.add_argument('--path', help="dataset for evaluation", default='demo-frames')
-    parser.add_argument('--small', action='store_true', help='use small model')
-    parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
-    parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
-    args = parser.parse_args()
+    model = resnet18(pretrained=True)
+    cnn1 = nn.Sequential(*list(model.children())[:4])
+    cnn2 = nn.Sequential(*list(model.children())[4:-1])
+    ds = KeypointDB(video_path='data/total_videos',
+                    label_path='front_label/train.json',
+                    npy_path='/home/tk/Desktop/ktk/keypoint_npys',
+                    seq_length=64,
+                    transform=transforms.Compose([ToTensorForHeatmap(), NormalizeForHeatmap(
+                        [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
+                    train=True,
+                    input_size=224)
+    dl = DataLoader(ds, batch_size=2, shuffle=False, drop_last=True)
+    di = iter(dl)
+    sample = next(di)
+    img, heatmap = sample['images'], sample['heatmaps']
 
-    dataset = CustomGolfDB(
-        video_path='total_videos/',
-        label_path='custom_label/train_label.json',
-        seq_length=64,
-        transform=transforms.Compose([ToTensor(), Normalize(
-            # [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
-            [0.5, 0.5, 0.5], [0.5, 0.5, 0.5])]),
-        train=True,
-        input_size=512
-    )
-    data_loader = DataLoader(dataset,
-                             batch_size=1,
-                             shuffle=True,
-                             drop_last=True)
+    unnorm = UnNormalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
-    dataiter = iter(data_loader)
-    batch = next(dataiter)
-    images = batch['images']
+    B, N, C, H, W = img.size()
+    img = img.view(B * N, C, H, W)
+    heatmap = heatmap.view(B*N, 1, 56, 56)
 
-    model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load('RAFT/models/raft-things.pth'))
-    model = model.module
-    model.cuda()
-    model.eval()
+    out1 = cnn1(img)
+    plt.subplot(1, 2, 1)
+    plt.imshow(out1[0].sum(dim=0).detach().numpy(), cmap='jet')
 
-    for image1, image2 in zip(images[0][:-1], images[0][1:]):
-        image1 = image1[None].cuda()
-        image2 = image2[None].cuda()
-        padder = InputPadder(image1.shape)
-        image1, image2 = padder.pad(image1, image2)
+    summed = out1 + heatmap
 
-        flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
-        viz(image1, flow_up)
+    plt.subplot(1, 2, 2)
+    plt.imshow(summed[0].sum(dim=0).detach().numpy(), cmap='jet')
+    plt.show()
+
+    # img = unnorm(img)
+    # img = img[0][0].permute((1, 2, 0)).detach().numpy()
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(img)
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(heatmap[0][0], cmap='jet')
+    # plt.show()
+
+    # input = img.view(2 * 64, 3, 224, 224)
+
+    # out = cnn1(input)
+    # heatmap = torch.unsqueeze(heatmap, 1)
+    # print(out.shape)
+    # print(heatmap.shape)
+    # out = out + heatmap
+    # print(out.shape)
+
+    # out = cnn2(out)
+    # print(out.shape)
+
+    # print(pytorch_model_summary.summary(cnn1, torch.zeros(2, 3, 224, 224)))
 
 
 if __name__ == '__main__':
     main()
-    # 12,363,849 GRU
-    # 12,758,089 LSTM

@@ -1,21 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="smart5@163.152.74.120:22" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="golf">
+      <paths name="smart5@163.152.74.120:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/pycharm_project_675" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="smart5@163.152.74.120:22">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/tmp/pycharm_project_675" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/smart5/ktk/golf" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/total_videos" />
+            <excludedPath local="true" path="$PROJECT_DIR$/keypoint_npys" />
+            <excludedPath local="true" path="$PROJECT_DIR$/saved_dicts" />
+            <excludedPath local="true" path="$PROJECT_DIR$/data" />
           </excludedPaths>
         </serverdata>
       </paths>
