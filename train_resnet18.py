@@ -1,8 +1,10 @@
 import argparse
 import os
 import time
+from pathlib import Path
 
 import torch
+from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -11,22 +13,24 @@ from dataloader import CustomGolfDB, Normalize, ToTensor
 from models.model_resnet import EventDetector
 
 if __name__ == '__main__':
+    writer = SummaryWriter()
+
     # training configuration
     parser = argparse.ArgumentParser(description='Training arguments')
     parser.add_argument('--input_size', type=int,
                         help='image size of input', default=224)
     parser.add_argument('--iterations', type=int,
-                        help='the number of training iterations', default=20000)
+                        help='the number of training iterations', default=2500)
     parser.add_argument('--it_save', type=int,
-                        help='save model every what iterations', default=100)
+                        help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=28)
+                        help='batch size', default=8)
     parser.add_argument('--frozen_layers', '-k', type=int,
-                        help='the number of frozen layers', default=5)
+                        help='the number of frozen layers', default=3)
     parser.add_argument('--save_folder', type=str,
-                        help='divided frame numbers', default='models_224')
+                        help='divided frame numbers', default='checkpoints/default_resnet')
 
     arg = parser.parse_args()
 
@@ -41,8 +45,8 @@ if __name__ == '__main__':
     model.cuda()
 
     dataset = CustomGolfDB(
-        video_path='total_videos/',
-        label_path='fs_labels/train_label.json',
+        video_path='data/total_videos',
+        label_path='front_labels/train.json',
         seq_length=arg.seq_length,
         transform=transforms.Compose([ToTensor(), Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
@@ -64,19 +68,18 @@ if __name__ == '__main__':
 
     losses = util.AverageMeter()
 
-    if not os.path.exists(arg.save_folder):
-        os.mkdir(arg.save_folder)
+    Path(arg.save_folder).mkdir(parents=True, exist_ok=True)
 
     i = 0
 
-    pretrained = True
+    pretrained = False
     if pretrained:
         state_dict = torch.load(
             'models_224/swingnet_3500.pth.tar', map_location=torch.device('cuda'))
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
-    model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    # model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     start_time = time.time()
 
@@ -93,6 +96,10 @@ if __name__ == '__main__':
             print('Iteration: {}\tLoss: {loss.val:.4f} ({loss.avg:.4f})'.format(
                 i, loss=losses))
             print('time : {}min'.format((time.time() - start_time) // 60))
+
+            writer.add_scalar('Loss', losses.val, i)
+            writer.add_scalar('Avg Loss', losses.avg, i)
+
             i += 1
             if i % arg.it_save == 0:
                 if isinstance(model, torch.nn.DataParallel):
@@ -106,3 +113,5 @@ if __name__ == '__main__':
                                 'iterations': i}, arg.save_folder + '/swingnet_{}.pth.tar'.format(i))
             if i == arg.iterations:
                 break
+
+    writer.close()

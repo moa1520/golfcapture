@@ -8,20 +8,24 @@ from torchvision import transforms
 from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
 from models.model_resnet_heatmap import Plan1, Plan2
 from models.resnet import resnet18
+from models.MobileNetV2 import MobileNetV2
 from util import UnNormalize
 import util
 
 
 def test():
-    model = Plan2(pretrain=True, width_mult=1, lstm_layers=1,
-                  lstm_hidden=256, bidirectional=True, dropout=False)
-    util.freeze_layers(3, model)
+    model = MobileNetV2().cuda()
+    model2 = resnet18().cuda()
 
-    input = torch.zeros(6, 64, 3, 224, 224).cuda()
-    heatmap = torch.zeros(6, 64, 224, 224).cuda()
-    model.cuda()
+    # model = Plan2(pretrain=True, width_mult=1, lstm_layers=1,
+    #               lstm_hidden=256, bidirectional=True, dropout=False)
+    # util.freeze_layers(3, model)
 
-    print(pytorch_model_summary.summary(model, input, heatmap))
+    input = torch.zeros(64, 3, 224, 224).cuda()
+    # heatmap = torch.zeros(6, 64, 224, 224).cuda()
+    # model.cuda()
+
+    print(pytorch_model_summary.summary(model2, input))
 
 
 def main():

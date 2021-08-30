@@ -35,3 +35,10 @@ def dense_optical_flow(method, video_path, params=[], to_gray=False):
             break
 
         old_frame = new_frame
+
+
+if __name__ == '__main__':
+    method = cv2.calcOpticalFlowFarneback
+    params = [0.5, 3, 15, 3, 5, 1.2, 0]
+    frames = dense_optical_flow(
+        method, 'test_video.mp4', params=params, to_gray=True)

@@ -1,6 +1,7 @@
 import argparse
 import os
 import time
+from pathlib import Path
 
 import torch
 from tensorboardX import SummaryWriter
@@ -19,29 +20,29 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', type=int,
                         help='image size of input', default=224)
     parser.add_argument('--iterations', type=int,
-                        help='the number of training iterations', default=10000)
+                        help='the number of training iterations', default=2500)
     parser.add_argument('--it_save', type=int,
-                        help='save model every what iterations', default=250)
+                        help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=16)
+                        help='batch size', default=8)
     parser.add_argument('--frozen_layers', '-k', type=int,
-                        help='the number of frozen layers', default=3)
+                        help='the number of frozen layers', default=5)
     parser.add_argument('--heatmap_size', type=int,
-                        help='the size of heatmap', default=224)
+                        help='the size of heatmap', default=56)
     parser.add_argument('--save_folder', type=str,
-                        help='divided frame numbers', default='saved_dicts/224_heatmap_plan2')
+                        help='divided frame numbers', default='checkpoints/plan1')
 
     arg = parser.parse_args()
 
-    model = Plan2(pretrain=True,
+    model = Plan1(pretrain=True,
                   width_mult=1.,
                   lstm_layers=1,
                   lstm_hidden=256,
                   bidirectional=True,
                   dropout=False)
-    util.freeze_layers(arg.frozen_layers, model)
+    # util.freeze_layers(arg.frozen_layers, model)
     model.train()
     model.cuda()
 
@@ -64,19 +65,18 @@ if __name__ == '__main__':
     # the 8 golf swing events are classes 0 through 7, no-event is class 8
     # the ratio of events to no-events is approximately 1:35 so weight classes accordingly:
     weights = torch.FloatTensor(
-        [1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 36]).cuda()
+        [1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 35]).cuda()
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
 
     losses = util.AverageMeter()
 
-    if not os.path.exists(arg.save_folder):
-        os.mkdir(arg.save_folder)
+    Path(arg.save_folder).mkdir(parents=True, exist_ok=True)
 
     i = 0
 
-    pretrained = True
+    pretrained = False
     if pretrained:
         state_dict = torch.load(
             'saved_dicts/224_heatmap_plan2/swingnet_250.pth.tar', map_location=torch.device('cuda'))
