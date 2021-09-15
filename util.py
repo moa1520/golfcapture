@@ -49,7 +49,7 @@ def get_probs(dl, seq_length, model):
                 image_batch = images[:, batch * seq_length:, :, :, :]
             else:
                 image_batch = images[:, batch *
-                                        seq_length:(batch + 1) * seq_length, :, :, :]
+                                     seq_length:(batch + 1) * seq_length, :, :, :]
 
             logits = model(image_batch.cuda())
 
@@ -111,7 +111,7 @@ def correct_preds(probs, labels, tol=-1):
     events = np.where(labels < 8)[0]
     preds = np.zeros(len(events))
     if tol == -1:
-        tol = int(max(np.round((events[5] - events[1]) / 80), 3))
+        tol = int(max(np.round((events[5] - events[0]) / 30), 3))
     print('tolerance: ', tol)
     for i in range(len(events)):
         preds[i] = np.argsort(probs[:, i])[-1]

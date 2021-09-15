@@ -109,6 +109,70 @@ class KeypointDB(Dataset):
         return sample
 
 
+class SampleVideo_repeat(Dataset):
+    def __init__(self, path, input_size, posenet_input_size, transform=None):
+        self.path = path
+        self.input_size = input_size
+        self.posenet_input_size = posenet_input_size
+        self.transform = transform
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        cap = cv2.VideoCapture(self.path)
+        frame_size = [cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                      cap.get(cv2.CAP_PROP_FRAME_WIDTH)]
+        ratio = self.input_size / max(frame_size)
+        new_size = tuple([int(x * ratio) for x in frame_size])
+        delta_w = self.input_size - new_size[1]
+        delta_h = self.input_size - new_size[0]
+        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+        left, right = delta_w // 2, delta_w - (delta_w // 2)
+
+        frame_size_pose = [cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                           cap.get(cv2.CAP_PROP_FRAME_WIDTH)]
+        ratio_pose = self.posenet_input_size / max(frame_size_pose)
+        new_size_pose = tuple([int(x * ratio_pose) for x in frame_size_pose])
+        delta_w_pose = self.posenet_input_size - new_size_pose[1]
+        delta_h_pose = self.posenet_input_size - new_size_pose[0]
+        top_pose, bottom_pose = delta_h_pose // 2, delta_h_pose - \
+            (delta_h_pose // 2)
+        left_pose, right_pose = delta_w_pose // 2, delta_w_pose - \
+            (delta_w_pose // 2)
+
+        # preprocess and return frames
+        images = []
+        posenet_images = []
+        for _ in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
+            _, before_img = cap.read()
+            img = cv2.resize(before_img, (new_size[1], new_size[0]))
+            img_pose = cv2.resize(
+                before_img, ((new_size_pose[1], new_size_pose[0])))
+
+            img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                                     value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
+            img_pose = cv2.copyMakeBorder(img_pose, top_pose, bottom_pose, left_pose, right_pose, cv2.BORDER_CONSTANT,
+                                          value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
+
+            img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            img_pose = cv2.rotate(img_pose, cv2.ROTATE_90_CLOCKWISE)
+
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img_pose = cv2.cvtColor(img_pose, cv2.COLOR_BGR2RGB)
+
+            images.append(img)
+            posenet_images.append(img_pose)
+        cap.release()
+        # only for compatibility with transforms
+        labels = np.zeros(len(images))
+        sample = {'images': np.asarray(images), 'images_pose': np.asarray(
+            posenet_images), 'labels': np.asarray(labels)}
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
+
 class SampleVideo(Dataset):
     def __init__(self, path, input_size, transform=None):
         self.path = path
@@ -324,6 +388,34 @@ class Normalize(object):
         images.sub_(self.mean[None, :, None, None]).div_(
             self.std[None, :, None, None])
         return {'images': images, 'labels': labels}
+
+
+class ToTensor_pose(object):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        images, images_pose, labels = sample['images'], sample['images_pose'], sample['labels']
+        images = images.transpose((0, 3, 1, 2))
+        images_pose = images_pose.transpose((0, 3, 1, 2))
+        return {'images': torch.from_numpy(images).float().div(255.),
+                'images_pose': torch.from_numpy(images_pose).float().div(255.),
+                'labels': torch.from_numpy(labels).long()}
+
+
+class Normalize_pose(object):
+    def __init__(self, mean, std):
+        self.mean = torch.tensor(mean, dtype=torch.float32)
+        self.mean_pose = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+        self.std = torch.tensor(std, dtype=torch.float32)
+        self.std_pose = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+
+    def __call__(self, sample):
+        images, images_pose, labels = sample['images'], sample['images_pose'], sample['labels']
+        images.sub_(self.mean[None, :, None, None]).div_(
+            self.std[None, :, None, None])
+        images_pose.sub_(self.mean_pose[None, :, None, None]).div_(
+            self.std_pose[None, :, None, None])
+        return {'images': images, 'images_pose': images_pose, 'labels': labels}
 
 
 if __name__ == '__main__':

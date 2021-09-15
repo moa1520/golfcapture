@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from MobileNetV2 import MobileNetV2
+from .MobileNetV2 import MobileNetV2
 
 
 class EventDetector(nn.Module):
@@ -36,16 +36,18 @@ class EventDetector(nn.Module):
         if self.bidirectional:
             if torch.cuda.is_available():
                 return (
-                Variable(torch.zeros(2 * self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True),
-                Variable(torch.zeros(2 * self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True))
+                    Variable(torch.zeros(2 * self.lstm_layers, batch_size,
+                             self.lstm_hidden).cuda(), requires_grad=True),
+                    Variable(torch.zeros(2 * self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True))
             else:
                 return (Variable(torch.zeros(2 * self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True),
                         Variable(torch.zeros(2 * self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True))
         else:
             if torch.cuda.is_available():
                 return (
-                Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True),
-                Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True))
+                    Variable(torch.zeros(self.lstm_layers, batch_size,
+                             self.lstm_hidden).cuda(), requires_grad=True),
+                    Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden).cuda(), requires_grad=True))
             else:
                 return (Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True),
                         Variable(torch.zeros(self.lstm_layers, batch_size, self.lstm_hidden), requires_grad=True))

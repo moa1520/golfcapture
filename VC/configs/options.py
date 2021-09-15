@@ -9,11 +9,11 @@ class BaseOptions():
         # for general
         g_data = parser.add_argument_group('Data')
         g_data.add_argument(
-            '--dir_data', type=str, default='/media/lbs/HDD/VC_Dataset', help='path to data')
+            '--dir_data', type=str, default='/home/smart5/ktk/ALL_DATA', help='path to data')
         g_data.add_argument('--dir_results', type=str,
-                            default='/home/lbs/VC/results', help='path to data')
+                            default='results', help='path to data')
         g_data.add_argument('--dir_checkpoints', type=str,
-                            default='/home/lbs/VC/checkpoints', help='path to data')
+                            default='checkpoints', help='path to data')
 
         # Experiment related
         g_exp = parser.add_argument_group('Experiment')
@@ -33,7 +33,7 @@ class BaseOptions():
         g_train.add_argument('--continue_train',
                              default=False, help='load pretrained model')
         g_train.add_argument('--resume_epoch', type=int,
-                             default=-1, help='resume epoch')
+                             default=3, help='resume epoch')
 
         g_train.add_argument('--num_threads', default=12,
                              type=int, help='# sthreads for loading data')
@@ -42,36 +42,36 @@ class BaseOptions():
         g_train.add_argument('--shuffle', default=True,
                              help='shuffle training data')
         g_train.add_argument('--batch_size', type=int,
-                             default=32, help='input batch size')
+                             default=56, help='input batch size')
         g_train.add_argument('--learning_rate', type=float,
-                             default=1e-3, help='adam learning rate')
+                             default=1e-4, help='adam learning rate')
         g_train.add_argument('--schedule', type=int, nargs='+',
-                             default=[35, 100], help='Decrease learning rate at these epochs.')
+                             default=[50, 70], help='Decrease learning rate at these epochs.')
         g_train.add_argument('--rf_schedule', type=int, nargs='+',
-                             default=[110, 150], help='Decrease learning rate at these epochs.')
+                             default=[90, 120], help='Decrease learning rate at these epochs.')
         g_train.add_argument('--sigma_schedule', type=int, nargs='+',
-                             default=[10, 25], help='Decrease learning rate at these epochs.')
+                             default=[20, 50], help='Decrease learning rate at these epochs.')
 
         g_train.add_argument('--gamma', type=float, default=0.1,
                              help='LR is multiplied by gamma on schedule.')
         g_train.add_argument('--num_epoch', type=int,
-                             default=200, help='num epoch to train')
+                             default=100, help='num epoch to train')
         g_train.add_argument('--refine_epoch', type=int,
-                             default=0, help='heatmaps target weight')
+                             default=70, help='heatmaps target weight')
 
         g_train.add_argument('--input_size', type=int,
-                             default=1024, help='input image size')
+                             default=512, help='input image size')
         g_train.add_argument('--num_joints', type=int,
                              default=21, help='number of joints')
         g_train.add_argument('--sigma', type=float,
-                             default=4, help='heatmaps sigma')
+                             default=2, help='heatmaps sigma')
         g_train.add_argument('--use_target_weight',
                              default=False, help='heatmaps target weight')
         g_train.add_argument('--num_blocks', type=int,
-                             default=6, help='heatmaps target weight')
+                             default=8, help='heatmaps target weight')
         g_train.add_argument('--num_channels', type=int,
                              default=64, help='heatmaps target weight')
-        g_train.add_argument('--aug_blur', default=True,
+        g_train.add_argument('--aug_blur', default=False,
                              help='heatmaps target weight')
 
         # Testing related

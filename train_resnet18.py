@@ -10,7 +10,8 @@ from torchvision import transforms
 
 import util
 from dataloader import CustomGolfDB, Normalize, ToTensor
-from models.model_resnet import EventDetector
+# from models.model_resnet import EventDetector
+from models.model import EventDetector
 
 if __name__ == '__main__':
     writer = SummaryWriter()
@@ -20,17 +21,17 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', type=int,
                         help='image size of input', default=224)
     parser.add_argument('--iterations', type=int,
-                        help='the number of training iterations', default=2500)
+                        help='the number of training iterations', default=5000)
     parser.add_argument('--it_save', type=int,
                         help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=8)
+                        help='batch size', default=16)
     parser.add_argument('--frozen_layers', '-k', type=int,
-                        help='the number of frozen layers', default=3)
+                        help='the number of frozen layers', default=10)
     parser.add_argument('--save_folder', type=str,
-                        help='divided frame numbers', default='checkpoints/default_resnet')
+                        help='divided frame numbers', default='checkpoints/default_mobilenet')
 
     arg = parser.parse_args()
 
@@ -46,7 +47,7 @@ if __name__ == '__main__':
 
     dataset = CustomGolfDB(
         video_path='data/total_videos',
-        label_path='front_labels/train.json',
+        label_path='fs_labels/train_label.json',
         seq_length=arg.seq_length,
         transform=transforms.Compose([ToTensor(), Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     # the 8 golf swing events are classes 0 through 7, no-event is class 8
     # the ratio of events to no-events is approximately 1:35 so weight classes accordingly:
     weights = torch.FloatTensor(
-        [1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 36]).cuda()
+        [1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 8, 1 / 35]).cuda()
     criterion = torch.nn.CrossEntropyLoss(weight=weights)
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         model.load_state_dict(state_dict['model_state_dict'])
         optimizer.load_state_dict(state_dict['optimizer_state_dict'])
         i = state_dict['iterations']
-    # model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    model = torch.nn.DataParallel(model, device_ids=[0, 1])
 
     start_time = time.time()
 

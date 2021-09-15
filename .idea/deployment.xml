@@ -8,11 +8,12 @@
             <mapping deploy="/home/smart5/ktk/golf" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/keypoint_npys" />
+            <excludedPath local="true" path="$PROJECT_DIR$/demo" />
             <excludedPath local="true" path="$PROJECT_DIR$/saved_dicts" />
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
             <excludedPath local="true" path="$PROJECT_DIR$/runs" />
             <excludedPath local="true" path="$PROJECT_DIR$/checkpoints" />
+            <excludedPath local="true" path="$PROJECT_DIR$/VC/checkpoint" />
           </excludedPaths>
         </serverdata>
       </paths>
