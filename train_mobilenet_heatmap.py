@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 import util
 from dataloader import KeypointDB, KeypointDB_concat, NormalizeForHeatmap, ToTensorForHeatmap
-from models.model_resnet_heatmap import Plan1_concat
+from models.model_mobilenet_heatmap import Plan1_concat
 
 if __name__ == '__main__':
     writer = SummaryWriter()
@@ -21,23 +21,23 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', type=int,
                         help='image size of input', default=224)
     parser.add_argument('--iterations', type=int,
-                        help='the number of training iterations', default=30000)
+                        help='the number of training iterations', default=10000)
     parser.add_argument('--it_save', type=int,
                         help='save model every what iterations', default=500)
     parser.add_argument('--seq_length', type=int,
                         help='divided frame numbers', default=64)
     parser.add_argument('--batch_size', '-bs', type=int,
-                        help='batch size', default=8)
+                        help='batch size', default=4)
     parser.add_argument('--frozen_layers', '-k', type=int,
                         help='the number of frozen layers', default=5)
     parser.add_argument('--heatmap_size', type=int,
                         help='the size of heatmap', default=56)
     parser.add_argument('--save_folder', type=str,
-                        help='divided frame numbers', default='checkpoints/plan1_concat')
+                        help='divided frame numbers', default='checkpoints/mobilenet_plan1_concat')
     parser.add_argument('--continue_train', type=bool,
                         help='continue training', default=False)
     parser.add_argument('--continue_iter', type=int,
-                        help='the number of continue training iter', default=20000)
+                        help='the number of continue training iter', default=10000)
     parser.add_argument('--val', type=bool,
                         help='validation during training', default=False)
     parser.add_argument('--val_term', type=int,
@@ -45,10 +45,10 @@ if __name__ == '__main__':
 
     arg = parser.parse_args()
 
-    model = Plan1_concat(pretrain=True,
+    model = Plan1_concat(pretrain=False,
                          width_mult=1,
-                         lstm_layers=2,
-                         lstm_hidden=1024,
+                         lstm_layers=1,
+                         lstm_hidden=256,
                          bidirectional=True,
                          dropout=False,
                          heatmap_size=arg.heatmap_size)
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                              shuffle=True,
                              drop_last=True)
 
-    val_dataset = KeypointDB_concat(
+    val_dataset = KeypointDB(
         video_path='data/total_videos',
         label_path='fs_labels/test_label.json',
         npy_path='data/all_keypoint_npys',

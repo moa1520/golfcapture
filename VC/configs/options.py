@@ -64,14 +64,14 @@ class BaseOptions():
         g_train.add_argument('--num_joints', type=int,
                              default=21, help='number of joints')
         g_train.add_argument('--sigma', type=float,
-                             default=2, help='heatmaps sigma')
+                             default=1, help='heatmaps sigma')
         g_train.add_argument('--use_target_weight',
                              default=False, help='heatmaps target weight')
         g_train.add_argument('--num_blocks', type=int,
                              default=8, help='heatmaps target weight')
         g_train.add_argument('--num_channels', type=int,
                              default=64, help='heatmaps target weight')
-        g_train.add_argument('--aug_blur', default=False,
+        g_train.add_argument('--aug_blur', default=True,
                              help='heatmaps target weight')
 
         # Testing related

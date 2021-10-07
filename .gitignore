@@ -20,3 +20,4 @@ front_labels/
 keypoint_npys/
 runs/
 checkpoints/
+onnx/

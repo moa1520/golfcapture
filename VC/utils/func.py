@@ -48,7 +48,8 @@ def get_square_img(img):
     square_img = np.zeros((square_size, square_size, 3), np.uint8)
     y_pad = (square_size - img.shape[0]) // 2
     x_pad = (square_size - img.shape[1]) // 2
-    square_img[y_pad: y_pad + img.shape[0], x_pad: x_pad + img.shape[1], :] = img
+    square_img[y_pad: y_pad + img.shape[0],
+               x_pad: x_pad + img.shape[1], :] = img
 
     return [square_img, x_pad, y_pad]
 
@@ -111,7 +112,8 @@ def get_data(imgPath, size, sigma, posePath=None, bbPath=None, blur=False):
 
         if blur and np.random.rand() > 0.8:
             resized_pose = (pose * scale).astype(int)
-            blurred_img = blur_club(resized_img, np.random.randint(2) * 2 + 1, (resized_pose[6] + resized_pose[9]) / 2, resized_pose[20])
+            blurred_img = blur_club(resized_img, np.random.randint(
+                2) * 2 + 1, (resized_pose[6] + resized_pose[9]) / 2, resized_pose[20])
             data['image'] = blurred_img
 
     if bbPath is not None:
@@ -151,36 +153,82 @@ def points_to_gaussian_heatmap(pose, size, sigma):
     s = np.eye(2)*sigma*scale
     x = np.arange(0, size)
     y = np.arange(0, size)
-    xx, yy = np.meshgrid(x,y)
+    xx, yy = np.meshgrid(x, y)
     xxyy = np.stack([xx.ravel(), yy.ravel()]).T
     for i, [x, y] in enumerate(pose):
         if i == 20:
-            g = multivariate_normal(mean=(x,y), cov=s * 3)
+            g = multivariate_normal(mean=(x, y), cov=s * 3)
             zz = g.pdf(xxyy)
-            heatmaps[i, :, :] = zz.reshape((size,size))
+            heatmaps[i, :, :] = zz.reshape((size, size))
 
             start = (pose[6] + pose[9]) / 2
             end = pose[20]
             for xx, yy in np.linspace(start, end, endpoint=True, num=50):
-                g = multivariate_normal(mean=(xx,yy), cov=s)
+                g = multivariate_normal(mean=(xx, yy), cov=s)
                 zz = g.pdf(xxyy)
-                heatmaps[i, :, :] += zz.reshape((size,size)) / 25
+                heatmaps[i, :, :] += zz.reshape((size, size)) / 25
         else:
-            g = multivariate_normal(mean=(x,y), cov=s)
+            g = multivariate_normal(mean=(x, y), cov=s)
             zz = g.pdf(xxyy)
-            heatmaps[i, :, :] = zz.reshape((size,size))
+            heatmaps[i, :, :] = zz.reshape((size, size))
 
-        heatmaps[i, :, :] = (heatmaps[i, :, :] - np.min(heatmaps[i, :, :])) / (np.max(heatmaps[i, :, :]) - np.min(heatmaps[i, :, :]))
+        heatmaps[i, :, :] = (heatmaps[i, :, :] - np.min(heatmaps[i, :, :])) / \
+            (np.max(heatmaps[i, :, :]) - np.min(heatmaps[i, :, :]))
+
+    return heatmaps
+
+
+def generate_heatmaps_torch(pose, size, sigma):
+    # sigma = int(sigma * size / 128)
+    sigma = int(sigma)
+    heatmaps = torch.zeros((pose.shape[0], size + 2 * sigma, size + 2 * sigma))
+    # heatmaps = np.zeros((pose.shape[0], size + 2 * sigma, size + 2 * sigma))
+    win_size = 2 * sigma + 1
+
+    x, y = torch.meshgrid(torch.linspace(-sigma, sigma, steps=win_size),
+                          torch.linspace(-sigma, sigma, steps=win_size))
+    # x, y = np.meshgrid(np.linspace(-sigma, sigma, num=win_size, endpoint=True),
+    #                    np.linspace(-sigma, sigma, num=win_size, endpoint=True))
+    dst = torch.sqrt(x*x + y*y)
+    # dst = np.sqrt(x * x + y * y)
+    mu = 0.000
+    gauss = torch.exp(-((dst - mu) ** 2 / (2.0 * sigma ** 2)))
+    # gauss = np.exp(-((dst - mu) ** 2 / (2.0 * sigma ** 2)))
+    club_gauss = gauss.clone() * 0.8
+
+    for i, [X, Y] in enumerate(pose):
+        X, Y = int(X), int(Y)
+        if X < 0 or X >= size or Y < 0 or Y >= size:
+            continue
+
+        if i == 20:
+            start = (pose[6] + pose[9]) / 2
+            # start = pose[6]
+            end = pose[20]
+
+            xx_ = torch.linspace(start[0], end[0], steps=50)
+            yy_ = torch.linspace(start[1], end[1], steps=50)
+            for xx, yy in zip(xx_, yy_):
+                heatmaps[i, int(yy):int(yy) + win_size, int(xx):int(xx) + win_size] = club_gauss
+            # for xx, yy in np.linspace(start, end, endpoint=True, num=50):
+            #     heatmaps[i, int(yy): int(yy) + win_size, int(xx)
+            #                     : int(xx) + win_size] = club_gauss
+
+        heatmaps[i, Y: Y + win_size, X: X + win_size] = gauss
+
+    heatmaps = heatmaps[:, sigma:-sigma, sigma:-sigma]
 
     return heatmaps
 
 
 def generate_heatmaps(pose, size, sigma):
-    sigma = int(sigma * size / 128)
+    # sigma = int(sigma * size / 128)
+    sigma = int(sigma)
     heatmaps = np.zeros((pose.shape[0], size + 2 * sigma, size + 2 * sigma))
     win_size = 2 * sigma + 1
 
-    x, y = np.meshgrid(np.linspace(-sigma, sigma, num=win_size, endpoint=True), np.linspace(-sigma, sigma, num=win_size, endpoint=True))
+    x, y = np.meshgrid(np.linspace(-sigma, sigma, num=win_size, endpoint=True),
+                       np.linspace(-sigma, sigma, num=win_size, endpoint=True))
     dst = np.sqrt(x * x + y * y)
     mu = 0.000
     gauss = np.exp(-((dst - mu) ** 2 / (2.0 * sigma ** 2)))
@@ -208,7 +256,8 @@ def generate_heatmaps(pose, size, sigma):
 
 def blur_club(img, sigma, start, end, num=50):
     size = img.shape[0]
-    aug_img = cv2.copyMakeBorder(img, sigma, sigma, sigma, sigma, cv2.BORDER_CONSTANT)
+    aug_img = cv2.copyMakeBorder(
+        img, sigma, sigma, sigma, sigma, cv2.BORDER_CONSTANT)
     res_img = aug_img.copy()
     win_size = 2 * sigma + 1
 
@@ -217,7 +266,8 @@ def blur_club(img, sigma, start, end, num=50):
         if x < 0 or x >= size or y < 0 or y >= size:
             continue
 
-        res_img[y: y + win_size, x: x + win_size] = cv2.blur(aug_img[y: y + win_size, x: x + win_size], (win_size, win_size))
+        res_img[y: y + win_size, x: x + win_size] = cv2.blur(
+            aug_img[y: y + win_size, x: x + win_size], (win_size, win_size))
 
     return res_img[sigma: -sigma, sigma: -sigma]
 
@@ -284,13 +334,15 @@ def save_result_images(img, pose, out_dir, name='', heatmaps=None, label=None):
         if i == len(JOINTMAP) - 1:
             cv2.circle(img_pose, child, 2, (0, 0, 255), -1)
         else:
-            color = (0, 255 * (len(JOINTMAP) - i) / len(JOINTMAP), 255 * i / len(JOINTMAP))
+            color = (0, 255 * (len(JOINTMAP) - i) /
+                     len(JOINTMAP), 255 * i / len(JOINTMAP))
             cv2.line(img_pose, child, parent, color, 2)
 
     if label is not None:
         for i in range(len(pose)):
             coord = pose[i]
-            cv2.circle(img_pose, coord.astype(int), 3, (0, 255 * label[i] if label is not None else 0, 255), -1)
+            cv2.circle(img_pose, coord.astype(int), 3, (0, 255 *
+                       label[i] if label is not None else 0, 255), -1)
 
     cv2.imwrite(os.path.join(out_dir, '{}img_pose.png'.format(name)), img_pose)
 
@@ -298,11 +350,14 @@ def save_result_images(img, pose, out_dir, name='', heatmaps=None, label=None):
         heatmap = np.sum(heatmaps, axis=0)
         heatmap = np.clip(heatmap * 255, 0, 255).astype(np.uint8)
         colored_heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-        colored_heatmap = cv2.resize(colored_heatmap, (img.shape[0], img.shape[1]))
-        cv2.imwrite(os.path.join(out_dir, '{}heatmap.png'.format(name)), colored_heatmap)
+        colored_heatmap = cv2.resize(
+            colored_heatmap, (img.shape[0], img.shape[1]))
+        cv2.imwrite(os.path.join(
+            out_dir, '{}heatmap.png'.format(name)), colored_heatmap)
 
         img_heatmap = img_pose * 0.7 + colored_heatmap * 0.3
-        cv2.imwrite(os.path.join(out_dir, '{}img_heatmap.png'.format(name)), img_heatmap)
+        cv2.imwrite(os.path.join(
+            out_dir, '{}img_heatmap.png'.format(name)), img_heatmap)
 
 
 def save_demo_images(batch_images, batch_pose, dir_out, idx):
@@ -316,7 +371,8 @@ def save_demo_images(batch_images, batch_pose, dir_out, idx):
                 parent = tuple(((pose[6] + pose[9])/2).astype(int))
             else:
                 parent = tuple(pose[JOINTMAP[j][1]].astype(int))
-            color = (0, 64 + 192 * (len(JOINTMAP) - j) / (len(JOINTMAP) - 1), 64 + 192 * j / (len(JOINTMAP) - 1))
+            color = (0, 64 + 192 * (len(JOINTMAP) - j) /
+                     (len(JOINTMAP) - 1), 64 + 192 * j / (len(JOINTMAP) - 1))
             if j == len(JOINTMAP) - 1:
                 cv2.circle(img_pose, child, 2, (0, 0, 255), -1)
             else:

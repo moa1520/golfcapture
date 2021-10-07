@@ -13,6 +13,96 @@ from torchvision import transforms
 from VC.utils.func import generate_heatmaps
 
 
+class KeypointDB_concat(Dataset):
+    def __init__(self, video_path, label_path, npy_path, heatmap_size, seq_length, transform=None, train=True, input_size=160):
+        self.video_path = video_path
+        self.label_path = label_path
+        self.npy_path = npy_path
+        self.heatmap_size = heatmap_size
+        self.seq_length = seq_length
+        self.transform = transform
+        self.train = train
+        self.input_size = input_size
+
+    def __len__(self):
+        with open(self.label_path, 'r') as json_file:
+            label = json.load(json_file)
+        return len(label['video_name'])
+
+    def __getitem__(self, index):
+        with open(self.label_path, 'r') as json_file:
+            label = json.load(json_file)
+        video_name = label['video_name'][index]
+        npy_path = osp.join(self.npy_path, video_name)
+        events = np.asarray(label['events'][index])
+        images, labels, npy_list = [], [], []
+        cap = cv2.VideoCapture(
+            osp.join(self.video_path, '{}.mp4'.format(video_name)))
+        frame_size = [cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+                      cap.get(cv2.CAP_PROP_FRAME_WIDTH)]
+        ratio = self.input_size / max(frame_size)
+        new_size = tuple([int(x * ratio) for x in frame_size])
+        delta_w = self.input_size - new_size[1]
+        delta_h = self.input_size - new_size[0]
+        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+        left, right = delta_w // 2, delta_w - (delta_w // 2)
+
+        if self.train:
+            start_frame = np.random.randint(events[-1] + 1)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            pos = start_frame
+            while len(images) < self.seq_length:
+                ret, img = cap.read()
+                if ret:
+                    img = cv2.resize(img, (new_size[1], new_size[0]))
+                    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                                             value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
+                    img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    images.append(img)
+                    if pos in events:
+                        labels.append(np.where(events == pos)[0][0])
+                    else:
+                        labels.append(8)
+                    npy_list.append(sorted(os.listdir(npy_path))[pos])
+                    pos += 1
+                else:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    pos = 0
+
+            cap.release()
+        else:
+            for pos in range(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))):
+                _, img = cap.read()
+                img = cv2.resize(img, (new_size[1], new_size[0]))
+                img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
+                                         value=[0.406 * 255, 0.456 * 255, 0.485 * 255])  # ImageNet means (BGR)
+                img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                images.append(img)
+                if pos in events:
+                    labels.append(np.where(events == pos)[0][0])
+                else:
+                    labels.append(8)
+            npy_list = sorted(os.listdir(npy_path))
+            cap.release()
+
+        before_heatmaps = [np.load(osp.join(npy_path, npy))[0] * self.heatmap_size
+                           for npy in npy_list]  # seq_length x 21 x 2
+        heatmaps = []
+        for before in before_heatmaps:
+            heatmaps.append(generate_heatmaps(
+                before, self.heatmap_size, sigma=1))  # seq_length x 21 x 224 x 224
+
+        # heatmaps = np.asarray(heatmaps).sum(axis=1)  # seq_length x 224 x 224
+
+        sample = {'images': np.asarray(images), 'labels': np.asarray(
+            labels), 'heatmaps': np.asarray(heatmaps)}
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
+
 class KeypointDB(Dataset):
     def __init__(self, video_path, label_path, npy_path, heatmap_size, seq_length, transform=None, train=True, input_size=160):
         self.video_path = video_path

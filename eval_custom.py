@@ -8,8 +8,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from dataloader import KeypointDB, NormalizeForHeatmap, ToTensorForHeatmap
-from models.model_resnet_heatmap import Plan1_repeat
+from dataloader import KeypointDB, KeypointDB_concat, NormalizeForHeatmap, ToTensorForHeatmap
+from models.model_resnet_heatmap import Plan1_concat
+# from models.model_mobilenet_heatmap import Plan1_concat
 from util import UnNormalize, correct_preds
 
 # Arrange GPU devices starting from 0
@@ -41,16 +42,16 @@ def eval(model, seq_length, disp, input_size, heatmap_size):
     #                             Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
     #                        train=False,
     #                        input_size=input_size)
-    dataset = KeypointDB(video_path='data/total_videos',
-                         label_path='fs_labels/test_label.json',
-                         npy_path='data/all_keypoint_npys',
-                         heatmap_size=heatmap_size,
-                         seq_length=seq_length,
-                         transform=transforms.Compose(
-                             [ToTensorForHeatmap(),
-                              NormalizeForHeatmap([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
-                         train=False,
-                         input_size=input_size)
+    dataset = KeypointDB_concat(video_path='data/total_videos',
+                                label_path='fs_labels/test_label.json',
+                                npy_path='data/all_keypoint_npys',
+                                heatmap_size=heatmap_size,
+                                seq_length=seq_length,
+                                transform=transforms.Compose(
+                                    [ToTensorForHeatmap(),
+                                     NormalizeForHeatmap([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
+                                train=False,
+                                input_size=input_size)
 
     data_loader = DataLoader(dataset,
                              batch_size=1,
@@ -62,7 +63,7 @@ def eval(model, seq_length, disp, input_size, heatmap_size):
     for i, sample in enumerate(data_loader):
         # images, labels = sample['images'], sample['labels']
         images, labels, heatmaps = sample['images'], sample['labels'], sample['heatmaps']
-        heatmaps = torch.unsqueeze(heatmaps, dim=2)
+        # heatmaps = torch.unsqueeze(heatmaps, dim=2)
         # full samples do not fit into GPU memory so evaluate sample in 'seq_length' batches
         batch = 0
         while batch * seq_length < images.shape[1]:
@@ -82,7 +83,7 @@ def eval(model, seq_length, disp, input_size, heatmap_size):
                 probs = np.append(probs, F.softmax(
                     logits.data, dim=1).cpu().numpy(), 0)
             batch += 1
-        _, _, _, _, c = correct_preds(probs, labels.squeeze())
+        _, _, _, _, c = correct_preds(probs, labels.squeeze(), tol=3)
         if disp:
             print(i, c)
         correct.append(c)
@@ -108,12 +109,12 @@ if __name__ == '__main__':
     seq_length = 64
     input_size = 224
     heatmap_size = 56
-    saved_path = 'checkpoints/plan1_repeat/swingnet_4500(best).pth.tar'
+    saved_path = 'checkpoints/plan1_concat/swingnet_26000.pth.tar'
 
-    model = Plan1_repeat(pretrain=True,
+    model = Plan1_concat(pretrain=True,
                          width_mult=1.,
-                         lstm_layers=1,
-                         lstm_hidden=256,
+                         lstm_layers=2,
+                         lstm_hidden=1024,
                          bidirectional=True,
                          dropout=False,
                          heatmap_size=heatmap_size)

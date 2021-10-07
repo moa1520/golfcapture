@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from VC.models.loss import JointsMSELoss
+from VC.utils.func import generate_heatmaps_torch
 
 
 def conv3x3(in_channels, out_channels, stride=1):
@@ -199,4 +200,7 @@ class ScalePoseNet(nn.Module):
         if y is not None:
             self.loss = self.get_loss(y)
 
-        return pose, self.heatmaps_list[-1], features, self.loss
+        heatmaps = generate_heatmaps_torch(pose[0] * 56, 56, 1)
+
+        return heatmaps
+        # return pose, self.heatmaps_list[-1], features, self.loss
