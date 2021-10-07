@@ -178,15 +178,29 @@ def points_to_gaussian_heatmap(pose, size, sigma):
     return heatmaps
 
 
+def linspace(start, end, steps):
+    delta = end - start
+    div = delta / (steps - 1)
+    value = start
+    y = []
+    y.append(start)
+    while value < end:
+        value += div
+        y.append(value)
+
+    return torch.Tensor(y)
+
+
 def generate_heatmaps_torch(pose, size, sigma):
     # sigma = int(sigma * size / 128)
     sigma = int(sigma)
-    heatmaps = torch.zeros((pose.shape[0], size + 2 * sigma, size + 2 * sigma))
+    heatmaps = torch.zeros(
+        (pose.shape[0], size + 2 * sigma, size + 2 * sigma)).cuda()
     # heatmaps = np.zeros((pose.shape[0], size + 2 * sigma, size + 2 * sigma))
     win_size = 2 * sigma + 1
 
-    x, y = torch.meshgrid(torch.linspace(-sigma, sigma, steps=win_size),
-                          torch.linspace(-sigma, sigma, steps=win_size))
+    x, y = torch.meshgrid(linspace(-sigma, sigma, steps=win_size),
+                          linspace(-sigma, sigma, steps=win_size))
     # x, y = np.meshgrid(np.linspace(-sigma, sigma, num=win_size, endpoint=True),
     #                    np.linspace(-sigma, sigma, num=win_size, endpoint=True))
     dst = torch.sqrt(x*x + y*y)
@@ -196,8 +210,11 @@ def generate_heatmaps_torch(pose, size, sigma):
     # gauss = np.exp(-((dst - mu) ** 2 / (2.0 * sigma ** 2)))
     club_gauss = gauss.clone() * 0.8
 
-    for i, [X, Y] in enumerate(pose):
-        X, Y = int(X), int(Y)
+    for i in range(pose.shape[0]):
+        # for i, [X, Y] in enumerate(pose):
+        X = pose[i][0]
+        Y = pose[i][1]
+        X, Y = X.type(torch.int), Y.type(torch.int)
         if X < 0 or X >= size or Y < 0 or Y >= size:
             continue
 
@@ -206,10 +223,14 @@ def generate_heatmaps_torch(pose, size, sigma):
             # start = pose[6]
             end = pose[20]
 
-            xx_ = torch.linspace(start[0], end[0], steps=50)
-            yy_ = torch.linspace(start[1], end[1], steps=50)
-            for xx, yy in zip(xx_, yy_):
-                heatmaps[i, int(yy):int(yy) + win_size, int(xx):int(xx) + win_size] = club_gauss
+            xx_ = linspace(start[0], end[0], steps=50)
+            yy_ = linspace(start[1], end[1], steps=50)
+            for k in range(xx_.shape[0]):
+                # for xx, yy in zip(xx_, yy_):
+                xx = xx_[k]
+                yy = yy_[k]
+                heatmaps[i, yy.type(torch.int):yy.type(
+                    torch.int) + win_size, xx.type(torch.int):xx.type(torch.int) + win_size] = club_gauss
             # for xx, yy in np.linspace(start, end, endpoint=True, num=50):
             #     heatmaps[i, int(yy): int(yy) + win_size, int(xx)
             #                     : int(xx) + win_size] = club_gauss
@@ -245,7 +266,7 @@ def generate_heatmaps(pose, size, sigma):
             end = pose[20]
 
             for xx, yy in np.linspace(start, end, endpoint=True, num=50):
-                heatmaps[i, int(yy): int(yy) + win_size, int(xx): int(xx) + win_size] = club_gauss
+                heatmaps[i, int(yy): int(yy) + win_size, int(xx)                         : int(xx) + win_size] = club_gauss
 
         heatmaps[i, Y: Y + win_size, X: X + win_size] = gauss
 

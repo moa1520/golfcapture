@@ -195,7 +195,7 @@ class ScalePoseNet(nn.Module):
             (tmp % w, torch.div(tmp,  w, rounding_mode='trunc')), dim=2)
         pose = pose / w
 
-        features = torch.cat(features_list, dim=1).detach()
+        # features = torch.cat(features_list, dim=1).detach()
 
         if y is not None:
             self.loss = self.get_loss(y)
